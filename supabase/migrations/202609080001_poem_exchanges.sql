@@ -26,6 +26,13 @@ end $$;
 drop trigger if exists users_assign_number on public.users;
 create trigger users_assign_number before insert on public.users for each row execute function public.assign_user_number();
 
+do $$ declare r record; chosen integer; begin
+  for r in select id from public.users where user_number is null loop
+    select n into chosen from generate_series(1,9999) n where not exists(select 1 from public.users u where u.user_number=n) order by random() limit 1;
+    update public.users set user_number=chosen where id=r.id;
+  end loop;
+end $$;
+
 create table if not exists public.pinned_poems (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.users(id) on delete cascade,
@@ -71,6 +78,7 @@ begin
   if uid is null or uid=p_recipient then raise exception 'invalid recipient'; end if;
   if array_length(p_lines,1)<>5 then raise exception 'a poem must have five lines'; end if;
   if (p_kind='reply' and p_root_poem is null) or (p_kind='letter' and p_root_poem is not null) then raise exception 'invalid root poem'; end if;
+  if p_kind='reply' and not exists(select 1 from public.poems where id=p_root_poem and user_id=p_recipient) then raise exception 'recipient must own root poem'; end if;
   if p_kind='letter' and not exists (
     select 1 from public.user_glimpses where viewer_user_id=uid and viewed_user_id=p_recipient
   ) then raise exception 'recipient must first be glimpsed'; end if;
