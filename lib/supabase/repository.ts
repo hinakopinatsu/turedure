@@ -31,7 +31,7 @@ export async function signOut() {
 
 export async function getTodayTheme() {
   const date = new Date().toLocaleDateString("sv-SE", { timeZone:"Asia/Tokyo" });
-  const { data,error } = await supabase.from("themes").select("*").eq("date",date).single();
+  const { data,error } = await supabase.from("themes").select("*").eq("date",date).maybeSingle();
   dbError("本日の題の取得",error); return data;
 }
 
@@ -82,8 +82,18 @@ export async function addExchangePoem(exchangeId:string,lines:string[]) {
 }
 
 export async function getExchanges(userId:string) {
-  const {data,error}=await supabase.from("poem_exchanges").select("*,initiator:users!poem_exchanges_initiator_user_id_fkey(user_number),recipient:users!poem_exchanges_recipient_user_id_fkey(user_number),exchange_poems(*)").or(`initiator_user_id.eq.${userId},recipient_user_id.eq.${userId}`).order("updated_at",{ascending:false});
+  const {data,error}=await supabase.from("poem_exchanges").select("*,initiator:users!poem_exchanges_initiator_user_id_fkey(user_number),recipient:users!poem_exchanges_recipient_user_id_fkey(user_number),root:poems!poem_exchanges_root_poem_id_fkey(*,users(user_number)),exchange_poems(*)").order("updated_at",{ascending:false});
   dbError("文箱の取得",error);return data??[];
+}
+
+export async function getPublicExchanges() {
+  const {data,error}=await supabase.from("poem_exchanges").select("*,initiator:users!poem_exchanges_initiator_user_id_fkey(user_number),recipient:users!poem_exchanges_recipient_user_id_fkey(user_number),root:poems!poem_exchanges_root_poem_id_fkey(*,users(user_number)),exchange_poems(*)").eq("visibility","public").order("updated_at",{ascending:false});
+  dbError("公開返歌の取得",error);return data??[];
+}
+
+export async function getPeekPoems(userId:string) {
+  const {data,error}=await supabase.from("peek_poems").select("user_id,display_order,poem_id,line_1,line_2,line_3,line_4,line_5").eq("user_id",userId).order("display_order").limit(3);
+  dbError("垣間見の歌の取得",error);return data??[];
 }
 
 export async function vote(matchId:string,userId:string,vote:"left"|"right"|"draw") {
