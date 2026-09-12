@@ -63,6 +63,11 @@ export async function getAwarePoemIds(userId:string) {
   if (error) throw error; return (data ?? []).map(row=>row.poem_id as string);
 }
 
+export async function getMyPoemAwareCount(poemId:string) {
+  const {data,error}=await supabase.rpc("my_poem_aware_count",{p_poem_id:poemId});
+  dbError("あはれの数の取得",error);return Number(data??0);
+}
+
 export async function setAware(userId:string,poemId:string,active:boolean) {
   const query = active ? supabase.from("reactions").insert({user_id:userId,poem_id:poemId,reaction_type:"aware"}) : supabase.from("reactions").delete().eq("user_id",userId).eq("poem_id",poemId).eq("reaction_type","aware");
   const { error } = await query; if(error) throw error;
