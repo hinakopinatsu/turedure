@@ -94,6 +94,17 @@ export async function getExchanges(userId:string) {
   dbError("文箱の取得",error);return data??[];
 }
 
+export async function getViewedExchangePoemIds(userId:string) {
+  const {data,error}=await supabase.from("exchange_poem_views").select("exchange_poem_id").eq("user_id",userId);
+  dbError("届きし文の確認状態の取得",error);return (data??[]).map(row=>row.exchange_poem_id as string);
+}
+
+export async function markExchangePoemsViewed(userId:string,exchangePoemIds:string[]) {
+  if(exchangePoemIds.length===0)return;
+  const {error}=await supabase.from("exchange_poem_views").upsert(exchangePoemIds.map(exchangePoemId=>({user_id:userId,exchange_poem_id:exchangePoemId})),{onConflict:"user_id,exchange_poem_id",ignoreDuplicates:true});
+  dbError("届きし文の確認記録",error);
+}
+
 export async function getPublicExchanges() {
   const {data,error}=await supabase.from("poem_exchanges").select("*,initiator:users!poem_exchanges_initiator_user_id_fkey(user_number),recipient:users!poem_exchanges_recipient_user_id_fkey(user_number),root:poems!poem_exchanges_root_poem_id_fkey(*,users(user_number)),exchange_poems(*)").eq("visibility","public").order("updated_at",{ascending:false});
   dbError("公開返歌の取得",error);return data??[];
