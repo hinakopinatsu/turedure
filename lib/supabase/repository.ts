@@ -81,12 +81,12 @@ export async function recordGlimpse(viewerId:string,viewedId:string) {
   const {error}=await supabase.from("user_glimpses").upsert({viewer_user_id:viewerId,viewed_user_id:viewedId},{onConflict:"viewer_user_id,viewed_user_id"});if(error)throw error;
 }
 
-export async function beginExchange(recipientId:string,rootPoemId:string|null,kind:"reply"|"letter",visibility:"public"|"private",lines:string[]) {
-  const {data,error}=await supabase.rpc("begin_exchange",{p_recipient:recipientId,p_root_poem:rootPoemId,p_kind:kind,p_visibility:visibility,p_lines:lines});if(error)throw error;return data;
+export async function beginExchange(recipientId:string,rootPoemId:string|null,kind:"reply"|"letter",visibility:"public"|"private",lines:string[],scentKey:string|null=null,branchKey:string|null=null) {
+  const {data,error}=await supabase.rpc("begin_exchange",{p_recipient:recipientId,p_root_poem:rootPoemId,p_kind:kind,p_visibility:visibility,p_lines:lines,p_scent_key:visibility==="private"?scentKey:null,p_branch_key:visibility==="private"?branchKey:null});if(error)throw error;return data;
 }
 
-export async function addExchangePoem(exchangeId:string,lines:string[]) {
-  const {data,error}=await supabase.rpc("add_exchange_poem",{p_exchange_id:exchangeId,p_lines:lines});if(error)throw error;return data;
+export async function addExchangePoem(exchangeId:string,lines:string[],scentKey:string|null=null,branchKey:string|null=null) {
+  const {data,error}=await supabase.rpc("add_exchange_poem",{p_exchange_id:exchangeId,p_lines:lines,p_scent_key:scentKey,p_branch_key:branchKey});if(error)throw error;return data;
 }
 
 export async function getExchanges(userId:string) {
