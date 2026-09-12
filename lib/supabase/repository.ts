@@ -5,6 +5,9 @@ function dbError(context:string,error:{message?:string;code?:string}|null):asser
 }
 
 export type DbPoem = { id:string; user_id:string; theme_id:string; line_1:string; line_2:string; line_3:string; line_4:string; line_5:string; created_at:string; users:{user_number:number}|null };
+export type DbTheme = {id:string;date:string;title:string;seasonal_text:string|null};
+export type DbSelectedResult = {rank:number;poem:DbPoem|null};
+export type PendingResults = {theme:DbTheme;results:DbSelectedResult[]};
 
 export async function ensureUser() {
   const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -104,4 +107,30 @@ export async function getTodayMatches() {
   const date=new Date().toLocaleDateString("sv-SE",{timeZone:"Asia/Tokyo"});
   const {data,error}=await supabase.from("uta_awase_matches").select("id,left:poems!uta_awase_matches_left_poem_id_fkey(*,users(user_number)),right:poems!uta_awase_matches_right_poem_id_fkey(*,users(user_number))").eq("battle_date",date).order("created_at");
   dbError("歌合の取得",error);return data??[];
+}
+
+function jstDateOffset(days:number) {
+  const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+  const value=(type:string)=>parts.find(part=>part.type===type)?.value??"";
+  const base=new Date(`${value("year")}-${value("month")}-${value("day")}T00:00:00+09:00`);
+  base.setUTCDate(base.getUTCDate()+days);
+  return new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).format(base);
+}
+
+export async function getPendingResults(userId:string):Promise<PendingResults|null> {
+  const targetDate=jstDateOffset(-2);
+  const {data:theme,error:themeError}=await supabase.from("themes").select("id,date,title,seasonal_text").eq("date",targetDate).maybeSingle();
+  dbError("一昨日の題の取得",themeError);if(!theme)return null;
+  const {data:rows,error:resultsError}=await supabase.from("uta_awase_results").select("rank,poem:poems!uta_awase_results_poem_id_fkey(*,users(user_number))").eq("theme_id",theme.id).gte("rank",1).lte("rank",3).order("rank");
+  dbError("撰歌の取得",resultsError);
+  const results=(rows??[]) as unknown as DbSelectedResult[];
+  if(results.length!==3||results.some((row,index)=>row.rank!==index+1||!row.poem))return null;
+  const {data:view,error:viewError}=await supabase.from("result_views").select("id").eq("user_id",userId).eq("theme_id",theme.id).maybeSingle();
+  dbError("撰歌の閲覧状態の取得",viewError);
+  return view?null:{theme:theme as DbTheme,results};
+}
+
+export async function markResultsViewed(userId:string,themeId:string) {
+  const {error}=await supabase.from("result_views").upsert({user_id:userId,theme_id:themeId},{onConflict:"user_id,theme_id",ignoreDuplicates:true});
+  dbError("撰歌の閲覧記録",error);
 }
