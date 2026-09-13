@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   keywords: ["短歌", "和歌", "歌会", "匿名短歌", "短歌SNS", "平安", "返歌"],
   alternates: { canonical: "/" },
   robots: { index: true, follow: true },
+  verification: { google: "M3Rfa44q6cStzUIE3FJP1YW7pzOLsex2qgyOBwk3iJA" },
   openGraph: {
     type: "website", locale: "ja_JP", url: "/", siteName: "ツレヅレ",
     title: "ツレヅレ｜匿名で短歌を交わす歌会",

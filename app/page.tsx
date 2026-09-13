@@ -107,6 +107,36 @@ function Welcome({ onEnter }: { onEnter: () => void }) {
   </main>;
 }
 
+function PublicLanding({ onEnter }: { onEnter: () => void }) {
+  return <main className="public-landing page-in">
+    <div className="landing-moon" aria-hidden="true" />
+    <div className="landing-misu" aria-hidden="true"><i/><i/><i/><i/><i/></div>
+    <header className="landing-hero">
+      <p className="landing-kicker">匿名で短歌を交わす、小さな歌会</p>
+      <h1>ツレヅレ</h1>
+      <p className="landing-tagline">一日一首。<br/>名を知らぬまま、心を知る。</p>
+      <div className="landing-copy">
+        <p>名前も、顔も、肩書きもいりません。<br/>一日にひとつ届く題に、一首を詠む。</p>
+        <p>誰かの歌に「あはれ」を感じ、<br/>ときには返歌をしたためる。</p>
+        <p>平安の歌文化を、<br/>今の時代にもう一度。</p>
+      </div>
+      <nav aria-label="ツレヅレへの入口"><button className="primary" onClick={onEnter}>御簾の内へ</button></nav>
+    </header>
+    <section className="landing-introduction" aria-labelledby="landing-about">
+      <p>言の葉で、出会う</p>
+      <h2 id="landing-about">歌だけが、その人を語る場所</h2>
+      <p>人の姿ではなく、和歌の余韻から心を知る。<br/>つながりを急がない、匿名の短歌SNSです。</p>
+    </section>
+    <div className="landing-practices" aria-label="ツレヅレの営み">
+      <section><span>一</span><h2>一日一首</h2><p>毎日ひとつ届く題に、<br/>一首だけ詠みます。</p></section>
+      <section><span>二</span><h2>垣間見</h2><p>名前や自己紹介ではなく、<br/>その人が選んだ三首から、その人を知ります。</p></section>
+      <section><span>三</span><h2>文</h2><p>DMの代わりに、一首をしたためます。<br/>相手が返すまで、次の一首は送れません。</p></section>
+      <section><span>四</span><h2>歌合</h2><p>昨日詠まれた歌を、<br/>左右に並べて味わいます。</p></section>
+    </div>
+    <footer className="landing-footer"><p>御簾の向こうに、今日の題が待っています。</p><button className="text-button" onClick={onEnter}>御簾の内へ</button></footer>
+  </main>;
+}
+
 function AuthPage() {
   const [mode,setMode]=useState<"signin"|"signup"|"forgot">("signin");
   const [email,setEmail]=useState("");
@@ -293,6 +323,7 @@ function AuthenticatedHome({initialNumber}:{initialNumber:number}) {
 
 function HomeContent() {
   const [ready,setReady]=useState(false);
+  const [showAuth,setShowAuth]=useState(false);
   const [signedIn,setSignedIn]=useState(false);
   const [accountId,setAccountId]=useState<string>();
   const [memberNumber,setMemberNumber]=useState<number>();
@@ -310,9 +341,9 @@ function HomeContent() {
     return()=>{active=false;subscription.unsubscribe()};
   },[]);
   useEffect(()=>{if(recoveryMode||!signedIn||!accountId){setMemberNumber(undefined);setAccountError(undefined);return}let active=true;setMemberNumber(undefined);setAccountError(undefined);ensureUser().then(({profile})=>{if(!active)return;if(typeof profile.user_number!=="number")throw new Error("番号がまだ授けられていません。users_assign_number の適用を確認してください。");setMemberNumber(profile.user_number);setGrantSeen(window.localStorage.getItem(`turedure-number-granted-${accountId}`)==="seen")}).catch(error=>{if(!active)return;const detail=error&&typeof error==="object"&&"message" in error?String(error.message):JSON.stringify(error);setAccountError(detail||"不明なエラー")});return()=>{active=false}},[signedIn,accountId,retry,recoveryMode]);
-  if(!ready)return <AuthLoading/>;
+  if(!ready)return <PublicLanding onEnter={()=>setShowAuth(true)}/>;
   if(recoveryMode)return <PasswordUpdatePage onReturn={()=>{void signOut().finally(()=>{window.history.replaceState(null,"",window.location.pathname);setRecoveryMode(false);setSignedIn(false);setAccountId(undefined)})}}/>;
-  if(!signedIn)return <AuthPage/>;
+  if(!signedIn)return showAuth?<AuthPage/>:<PublicLanding onEnter={()=>setShowAuth(true)}/>;
   if(accountError)return <AccountError message={accountError} onRetry={()=>setRetry(value=>value+1)} onSignOut={()=>{void signOut()}}/>;
   if(memberNumber===undefined)return <AuthLoading/>;
   if(!grantSeen)return <NumberGranted number={memberNumber} onContinue={()=>{if(accountId)window.localStorage.setItem(`turedure-number-granted-${accountId}`,"seen");setGrantSeen(true)}}/>;
