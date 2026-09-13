@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { addExchangePoem, beginExchange as saveExchange, ensureUser, getAwarePoemIds, getExchanges, getMyPoemAwareCount, getMyPoems, getPendingResults, getPeekPoems, getPinnedPoemIds, getPoems, getPoemsByIds, getPublicExchanges, getTodayMatches, getTodayTheme, getViewedExchangePoemIds, markExchangePoemsViewed, markResultsViewed, recordGlimpse, replacePinned, setAware, signIn, signOut, signUp, submitPoem, vote as saveVote, type DbTheme, type PendingResults } from "@/lib/supabase/repository";
+import { addExchangePoem, beginExchange as saveExchange, ensureUser, getAwarePoemIds, getExchanges, getMyPoemAwareCount, getMyPoems, getPendingResults, getPeekPoems, getPinnedPoemIds, getPoems, getPoemsByIds, getPublicExchanges, getTodayMatches, getTodayTheme, getViewedExchangePoemIds, markExchangePoemsViewed, markResultsViewed, recordGlimpse, replacePinned, requestPasswordReset, setAware, signIn, signOut, signUp, submitPoem, updatePassword, vote as saveVote, type DbTheme, type PendingResults } from "@/lib/supabase/repository";
 import { supabase } from "@/lib/supabase/client";
 
 type View = "gathering" | "utaawase" | "heartkeep" | "letters" | "mine";
@@ -107,14 +107,26 @@ function Welcome({ onEnter }: { onEnter: () => void }) {
 }
 
 function AuthPage() {
-  const [mode,setMode]=useState<"signin"|"signup">("signin");
+  const [mode,setMode]=useState<"signin"|"signup"|"forgot">("signin");
   const [email,setEmail]=useState("");
   const [password,setPassword]=useState("");
   const [showPassword,setShowPassword]=useState(false);
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState<string>();
-  const submit=async(event:React.FormEvent)=>{event.preventDefault();setBusy(true);setMessage(undefined);try{if(mode==="signin"){await signIn(email,password)}else{const result=await signUp(email,password);if(!result.session)setMessage("確かめの文を送りました。文中の結び目を開いてください。")}}catch(error){const text=error instanceof Error?error.message:"認証できませんでした";setMessage(text.includes("Invalid login")?"便り先か合言葉が違うようです。":text.includes("already registered")?"この便り先は、すでに結ばれています。":text)}finally{setBusy(false)}};
-  return <main className="auth-page page-in"><div className="moon" aria-hidden="true"/><div className="auth-sprig" aria-hidden="true"/><header><p>一日一首、ただ言葉を残す場所</p><h1>ツレヅレ</h1><span>名を持たず、番号だけで。</span></header><form onSubmit={submit}><h2>{mode==="signin"?"ふたたび、御簾の内へ":"はじめて、御簾の内へ"}</h2><p className="auth-lead">{mode==="signin"?"結びし便り先と、合言葉を。":"便り先は、帰るためだけに預かります。\nほかの誰にも明かされません。"}</p><label><span>便り先（メールアドレス）</span><input type="email" autoComplete="email" required value={email} onChange={event=>setEmail(event.target.value)}/></label><label><span>合言葉（パスワード）</span><div className="password-field"><input type={showPassword?"text":"password"} autoComplete={mode==="signin"?"current-password":"new-password"} minLength={8} required value={password} onChange={event=>setPassword(event.target.value)}/><button type="button" aria-pressed={showPassword} aria-label={showPassword?"パスワードを隠す":"パスワードを表示する"} onClick={()=>setShowPassword(value=>!value)}>{showPassword?"隠す":"見る"}</button></div><small>八文字以上</small></label>{message&&<p className="auth-message" role="status">{message}</p>}<button className="primary" disabled={busy}>{busy?"しばし、お待ちを":mode==="signin"?"御簾をあげる":"番号を授かる"}</button></form><button className="auth-switch" onClick={()=>{setMode(mode==="signin"?"signup":"signin");setMessage(undefined);setShowPassword(false)}}>{mode==="signin"?"はじめて訪れる方はこちら":"すでに番号をお持ちの方はこちら"}</button><p className="auth-foot">ここに、名も姿もいりません。<br/>歌と言葉だけが残ります。</p></main>;
+  const submit=async(event:React.FormEvent)=>{event.preventDefault();setBusy(true);setMessage(undefined);try{if(mode==="forgot"){await requestPasswordReset(email,`${window.location.origin}/?recovery=1`);setMessage("合言葉を結び直す便りを送りました")}else if(mode==="signin"){await signIn(email,password)}else{const result=await signUp(email,password);if(!result.session)setMessage("確かめの文を送りました。文中の結び目を開いてください。")}}catch(error){if(mode==="forgot")setMessage("便りを送れませんでした。しばらくしてから、もう一度お試しください。");else{const text=error instanceof Error?error.message:"認証できませんでした";setMessage(text.includes("Invalid login")?"便り先か合言葉が違うようです。":text.includes("already registered")?"この便り先は、すでに結ばれています。":text)}}finally{setBusy(false)}};
+  const changeMode=(next:"signin"|"signup"|"forgot")=>{setMode(next);setMessage(undefined);setShowPassword(false);setPassword("")};
+  return <main className="auth-page page-in"><div className="moon" aria-hidden="true"/><div className="auth-sprig" aria-hidden="true"/><header><p>一日一首、ただ言葉を残す場所</p><h1>ツレヅレ</h1><span>名を持たず、番号だけで。</span></header><form onSubmit={submit}><h2>{mode==="signin"?"ふたたび、御簾の内へ":mode==="signup"?"はじめて、御簾の内へ":"便り先をお知らせください"}</h2><p className="auth-lead">{mode==="signin"?"結びし便り先と、合言葉を。":mode==="signup"?"便り先は、帰るためだけに預かります。\nほかの誰にも明かされません。":"合言葉を結び直すための便りをお送りします"}</p><label><span>便り先（メールアドレス）</span><input type="email" autoComplete="email" required value={email} onChange={event=>setEmail(event.target.value)}/></label>{mode!=="forgot"&&<label><span>合言葉（パスワード）</span><div className="password-field"><input type={showPassword?"text":"password"} autoComplete={mode==="signin"?"current-password":"new-password"} minLength={8} required value={password} onChange={event=>setPassword(event.target.value)}/><button type="button" aria-pressed={showPassword} aria-label={showPassword?"パスワードを隠す":"パスワードを表示する"} onClick={()=>setShowPassword(value=>!value)}>{showPassword?"隠す":"見る"}</button></div><small>八文字以上</small>{mode==="signin"&&<button type="button" className="forgot-link" onClick={()=>changeMode("forgot")}>合言葉を忘れた方</button>}</label>}{message&&<p className="auth-message" role="status">{message}</p>}<button className="primary" disabled={busy}>{busy?"しばし、お待ちを":mode==="signin"?"御簾をあげる":mode==="signup"?"番号を授かる":"便りを送る"}</button></form><button className="auth-switch" onClick={()=>changeMode(mode==="signin"?"signup":"signin")}>{mode==="signin"?"はじめて訪れる方はこちら":"すでに番号をお持ちの方はこちら"}</button><p className="auth-foot">ここに、名も姿もいりません。<br/>歌と言葉だけが残ります。</p></main>;
+}
+
+function PasswordUpdatePage({onReturn}:{onReturn:()=>void}) {
+  const [password,setPassword]=useState("");
+  const [confirmation,setConfirmation]=useState("");
+  const [show,setShow]=useState(false);
+  const [busy,setBusy]=useState(false);
+  const [message,setMessage]=useState<string>();
+  const [complete,setComplete]=useState(false);
+  const submit=async(event:React.FormEvent)=>{event.preventDefault();setMessage(undefined);if(password.length<8){setMessage("新しい合言葉は8文字以上で入力してください。");return}if(password!==confirmation){setMessage("二つの合言葉が一致していません。");return}setBusy(true);try{await updatePassword(password);setComplete(true)}catch{setMessage("合言葉を結び直せませんでした。メールのリンクをもう一度開くか、便りを送り直してください。")}finally{setBusy(false)}};
+  return <main className="auth-page page-in"><div className="moon" aria-hidden="true"/><header><p>合言葉の結び直し</p><h1>ツレヅレ</h1></header>{complete?<section className="auth-complete"><h2>新しい合言葉を結びました</h2><p>次からは、新しい合言葉でお入りください。</p><button className="primary" onClick={onReturn}>ログイン画面へ戻る</button></section>:<form onSubmit={submit}><h2>新しい合言葉を結ぶ</h2><p className="auth-lead">8文字以上の、新しい合言葉を入力してください。</p><label><span>新しい合言葉</span><div className="password-field"><input type={show?"text":"password"} autoComplete="new-password" minLength={8} required value={password} onChange={event=>setPassword(event.target.value)}/><button type="button" aria-pressed={show} aria-label={show?"パスワードを隠す":"パスワードを表示する"} onClick={()=>setShow(value=>!value)}>{show?"隠す":"見る"}</button></div></label><label><span>新しい合言葉を、もう一度</span><input type={show?"text":"password"} autoComplete="new-password" minLength={8} required value={confirmation} onChange={event=>setConfirmation(event.target.value)}/></label>{message&&<p className="auth-message" role="alert">{message}</p>}<button className="primary" disabled={busy}>{busy?"結び直しています":"合言葉を結び直す"}</button></form>}</main>;
 }
 
 function AuthLoading(){return <main className="auth-loading"><i/><span>御簾の内を整えています</span></main>}
@@ -284,16 +296,19 @@ function HomeContent() {
   const [accountError,setAccountError]=useState<string>();
   const [grantSeen,setGrantSeen]=useState(false);
   const [retry,setRetry]=useState(0);
+  const [recoveryMode,setRecoveryMode]=useState(false);
   useEffect(()=>{
     let active=true;
+    if(new URLSearchParams(window.location.search).get("recovery")==="1")setRecoveryMode(true);
     const isMember=(session:Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"])=>Boolean(session&&!session.user.is_anonymous);
     const accept=(session:Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"])=>{setSignedIn(isMember(session));setAccountId(isMember(session)?session?.user.id:undefined);setReady(true)};
     supabase.auth.getSession().then(({data})=>{if(active)accept(data.session)});
-    const{data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>accept(session));
+    const{data:{subscription}}=supabase.auth.onAuthStateChange((event,session)=>{if(event==="PASSWORD_RECOVERY")setRecoveryMode(true);accept(session)});
     return()=>{active=false;subscription.unsubscribe()};
   },[]);
-  useEffect(()=>{if(!signedIn||!accountId){setMemberNumber(undefined);setAccountError(undefined);return}let active=true;setMemberNumber(undefined);setAccountError(undefined);ensureUser().then(({profile})=>{if(!active)return;if(typeof profile.user_number!=="number")throw new Error("番号がまだ授けられていません。users_assign_number の適用を確認してください。");setMemberNumber(profile.user_number);setGrantSeen(window.localStorage.getItem(`turedure-number-granted-${accountId}`)==="seen")}).catch(error=>{if(!active)return;const detail=error&&typeof error==="object"&&"message" in error?String(error.message):JSON.stringify(error);setAccountError(detail||"不明なエラー")});return()=>{active=false}},[signedIn,accountId,retry]);
+  useEffect(()=>{if(recoveryMode||!signedIn||!accountId){setMemberNumber(undefined);setAccountError(undefined);return}let active=true;setMemberNumber(undefined);setAccountError(undefined);ensureUser().then(({profile})=>{if(!active)return;if(typeof profile.user_number!=="number")throw new Error("番号がまだ授けられていません。users_assign_number の適用を確認してください。");setMemberNumber(profile.user_number);setGrantSeen(window.localStorage.getItem(`turedure-number-granted-${accountId}`)==="seen")}).catch(error=>{if(!active)return;const detail=error&&typeof error==="object"&&"message" in error?String(error.message):JSON.stringify(error);setAccountError(detail||"不明なエラー")});return()=>{active=false}},[signedIn,accountId,retry,recoveryMode]);
   if(!ready)return <AuthLoading/>;
+  if(recoveryMode)return <PasswordUpdatePage onReturn={()=>{void signOut().finally(()=>{window.history.replaceState(null,"",window.location.pathname);setRecoveryMode(false);setSignedIn(false);setAccountId(undefined)})}}/>;
   if(!signedIn)return <AuthPage/>;
   if(accountError)return <AccountError message={accountError} onRetry={()=>setRetry(value=>value+1)} onSignOut={()=>{void signOut()}}/>;
   if(memberNumber===undefined)return <AuthLoading/>;
