@@ -59,8 +59,17 @@ export async function submitPoem(userId:string,themeId:string,lines:string[]) {
 }
 
 export async function getAwarePoemIds(userId:string) {
-  const { data,error } = await supabase.from("reactions").select("poem_id").eq("user_id",userId).eq("reaction_type","aware");
+  const { data,error } = await supabase.from("reactions").select("poem_id").eq("user_id",userId).eq("reaction_type","aware").order("created_at",{ascending:false});
   if (error) throw error; return (data ?? []).map(row=>row.poem_id as string);
+}
+
+export async function getPoemsByIds(poemIds:string[]) {
+  if(poemIds.length===0)return [];
+  const {data,error}=await supabase.from("poems").select("*,users(user_number)").in("id",poemIds);
+  dbError("心留めの歌の取得",error);
+  const rows=(data??[]) as unknown as DbPoem[];
+  const byId=new Map(rows.map(row=>[row.id,row]));
+  return poemIds.flatMap(id=>{const row=byId.get(id);return row?[row]:[]});
 }
 
 export async function getMyPoemAwareCount(poemId:string) {
@@ -121,7 +130,7 @@ export async function vote(matchId:string,userId:string,vote:"left"|"right"|"dra
 
 export async function getTodayMatches() {
   const date=new Date().toLocaleDateString("sv-SE",{timeZone:"Asia/Tokyo"});
-  const {data,error}=await supabase.from("uta_awase_matches").select("id,left:poems!uta_awase_matches_left_poem_id_fkey(*,users(user_number)),right:poems!uta_awase_matches_right_poem_id_fkey(*,users(user_number))").eq("battle_date",date).order("created_at");
+  const {data,error}=await supabase.from("uta_awase_matches").select("id,theme:themes!uta_awase_matches_theme_id_fkey(id,date,title,seasonal_text),left:poems!uta_awase_matches_left_poem_id_fkey(*,users(user_number)),right:poems!uta_awase_matches_right_poem_id_fkey(*,users(user_number))").eq("battle_date",date).order("created_at");
   dbError("歌合の取得",error);return data??[];
 }
 
