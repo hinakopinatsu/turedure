@@ -42,10 +42,10 @@ function dateSeed(date: string) {
   return Array.from(date).reduce((value, character) => (value * 31 + character.charCodeAt(0)) >>> 0, 0);
 }
 
-export function chooseDailyTheme(date: string, previousTitle?: string | null): ThemeCandidate {
+export function chooseDailyTheme(date: string, recentTitles: string[] = []): ThemeCandidate {
   const month = Number(date.slice(5, 7));
   const seasonalCandidates = themesBySeason[seasonForMonth(month)];
-  const candidates = seasonalCandidates.filter((candidate) => candidate.title !== previousTitle);
+  const candidates = seasonalCandidates.filter((candidate) => !recentTitles.includes(candidate.title));
   const pool = candidates.length > 0 ? candidates : seasonalCandidates;
   return pool[dateSeed(date) % pool.length];
 }
