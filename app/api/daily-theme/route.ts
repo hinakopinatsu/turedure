@@ -105,15 +105,14 @@ export async function GET(request: Request) {
       return NextResponse.json({ created: false, date, matches, results, warnings });
     }
 
-    const { data: recent, error: recentError } = await supabase
+    const { data: usedThemes, error: usedThemesError } = await supabase
       .from("themes")
       .select("title")
       .lt("date", date)
-      .order("date", { ascending: false })
-      .limit(4);
+      .order("date", { ascending: false });
 
-    if (recentError) throw recentError;
-    const theme = chooseDailyTheme(date, (recent ?? []).map((row) => row.title));
+    if (usedThemesError) throw usedThemesError;
+    const theme = chooseDailyTheme(date, (usedThemes ?? []).map((row) => row.title));
     const { data: created, error: insertError } = await supabase
       .from("themes")
       .insert({ date, title: theme.title, seasonal_text: theme.seasonalText })

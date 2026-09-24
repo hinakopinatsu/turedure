@@ -1,37 +1,46 @@
 type ThemeCandidate = { title: string; seasonalText: string };
+type Season = "spring" | "summer" | "autumn" | "winter";
 
-const themesBySeason: Record<"spring" | "summer" | "autumn" | "winter", ThemeCandidate[]> = {
-  spring: [
-    { title: "ほどけゆくもの", seasonalText: "霞の奥に、春の気配" },
-    { title: "新しい道", seasonalText: "若草を渡る、やわらかな風" },
-    { title: "花のあと", seasonalText: "散る花に、過ぎし日を思う" },
-    { title: "遠い知らせ", seasonalText: "雁の帰る空、淡く霞みて" },
-    { title: "待ちわびた朝", seasonalText: "東雲にほどける、春の光" },
-  ],
-  summer: [
-    { title: "雨を待つ", seasonalText: "青葉に宿る、雨の匂い" },
-    { title: "短い夜", seasonalText: "明けやすき夜に、月は淡く" },
-    { title: "水の記憶", seasonalText: "泉の音に、涼をたずねる" },
-    { title: "言葉にならない熱", seasonalText: "夕凪の空、なお熱を残して" },
-    { title: "夏の別れ", seasonalText: "遠雷ののち、風向き変わる" },
-  ],
-  autumn: [
-    { title: "言えなかったこと", seasonalText: "露を結ぶ野に、虫の音ひとつ" },
-    { title: "帰る場所", seasonalText: "夕暮れの薄、風にかたむく" },
-    { title: "忘れられない匂い", seasonalText: "木犀の香、ふと袖に満ちて" },
-    { title: "長くなる影", seasonalText: "秋の日は傾き、影のみ残る" },
-    { title: "月に隠したもの", seasonalText: "澄む夜空に、月ひとつ" },
-  ],
-  winter: [
-    { title: "灯をともす", seasonalText: "霜夜の庵に、灯ひとつ" },
-    { title: "消えないぬくもり", seasonalText: "冬木立を抜ける、冴えた風" },
-    { title: "静かな約束", seasonalText: "雪待つ空に、音はなく" },
-    { title: "遠い足音", seasonalText: "凍る道に、足跡つづく" },
-    { title: "年の果て", seasonalText: "古き日を送り、新しきを待つ" },
-  ],
+const titleParts: Record<Season, { subjects: string[]; endings: string[] }> = {
+  spring: {
+    subjects: ["花", "霞", "若草", "春雨", "雲雀", "芽吹き", "東風", "桜", "旅立ち", "雪解け", "朝霞", "燕"],
+    endings: ["の記憶", "を待つ", "に託すもの", "の向こう", "がほどける頃", "からの便り", "に残した言葉", "と帰り道"],
+  },
+  summer: {
+    subjects: ["青葉", "夕立", "蛍", "夏雲", "風鈴", "泉", "白雨", "蝉時雨", "夕凪", "星空", "水面", "遠雷"],
+    endings: ["の記憶", "を待つ", "に託すもの", "の向こう", "がほどける頃", "からの便り", "に残した言葉", "と帰り道"],
+  },
+  autumn: {
+    subjects: ["月", "薄", "木犀", "秋風", "雁", "露", "虫の音", "夕暮れ", "紅葉", "夜長", "秋桜", "鰯雲"],
+    endings: ["の記憶", "を待つ", "に託すもの", "の向こう", "がほどける頃", "からの便り", "に残した言葉", "と帰り道"],
+  },
+  winter: {
+    subjects: ["初雪", "霜夜", "冬木立", "白息", "寒月", "焚火", "氷", "北風", "雪明り", "冬星", "枯野", "春待ち"],
+    endings: ["の記憶", "を待つ", "に託すもの", "の向こう", "がほどける頃", "からの便り", "に残した言葉", "と帰り道"],
+  },
 };
 
-function seasonForMonth(month: number): keyof typeof themesBySeason {
+const seasonalTexts: Record<Season, string[]> = {
+  spring: ["霞の奥に、春の気配", "若草を渡る、やわらかな風", "散る花に、過ぎし日を思う"],
+  summer: ["青葉に宿る、雨の匂い", "明けやすき夜に、月は淡く", "泉の音に、涼をたずねる"],
+  autumn: ["露を結ぶ野に、虫の音ひとつ", "夕暮れの薄、風にかたむく", "澄む夜空に、月ひとつ"],
+  winter: ["霜夜の庵に、灯ひとつ", "冬木立を抜ける、冴えた風", "雪待つ空に、音はなく"],
+};
+
+const themesBySeason = Object.fromEntries(
+  (Object.keys(titleParts) as Season[]).map((season) => {
+    const { subjects, endings } = titleParts[season];
+    const themes = subjects.flatMap((subject, subjectIndex) =>
+      endings.map((ending, endingIndex) => ({
+        title: `${subject}${ending}`,
+        seasonalText: seasonalTexts[season][(subjectIndex + endingIndex) % seasonalTexts[season].length],
+      })),
+    );
+    return [season, themes];
+  }),
+) as Record<Season, ThemeCandidate[]>;
+
+function seasonForMonth(month: number): Season {
   if (month >= 3 && month <= 5) return "spring";
   if (month >= 6 && month <= 8) return "summer";
   if (month >= 9 && month <= 11) return "autumn";

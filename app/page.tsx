@@ -25,7 +25,7 @@ const featuredBranches:BranchKey[]=["ume","fuji","susuki","matsu"];
 const branchDetails=(key:BranchKey)=>branches[key]??{name:"一枝",note:"静かな佇まい",season:"spring" as Season};
 
 const monthNames=["睦月","如月","弥生","卯月","皐月","水無月","文月","葉月","長月","神無月","霜月","師走"];
-function japaneseDay(day:number){const digits=["〇","一","二","三","四","五","六","七","八","九"];if(day<10)return digits[day];if(day===10)return "十";if(day<20)return `十${digits[day-10]}`;const tens=day===20?"二十":"三十";return day%10===0?tens:`${tens}${digits[day%10]}`;}
+function japaneseDay(day:number){const digits=["〇","一","二","三","四","五","六","七","八","九"];if(day<10)return digits[day];const tens=Math.floor(day/10);const ones=day%10;return `${tens===1?"":digits[tens]}十${ones===0?"":digits[ones]}`;}
 function japaneseDate(date:string){const [,month,day]=date.split("-").map(Number);return `${monthNames[month-1]} ${japaneseDay(day)}日`;}
 function poemCountLabel(count:number){return `${count<=31?japaneseDay(count):count}首`;}
 function seasonFromDate(date:string):Season{const month=Number(date.split("-")[1]);return month>=3&&month<=5?"spring":month>=6&&month<=8?"summer":month>=9&&month<=11?"autumn":"winter";}
